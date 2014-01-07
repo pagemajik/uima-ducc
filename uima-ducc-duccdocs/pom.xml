@@ -76,6 +76,8 @@
                     <echo message="Building duccbook HTML" />
                     <mkdir dir="target/site/duccbook-html" />
                     <mkdir dir="target/site/duccbook-html/images" />
+                    <mkdir dir="target/site/duccbook-install" />
+
                     <exec executable="htlatex" dir="src/site/tex/duccbook">
                       <arg value="duccbook.tex" />
                     </exec>
@@ -100,6 +102,28 @@
                     <delete file="src/site/tex/duccbook/duccbook.xref" />
                     <echo message="Completed duccbook HTML" />
 
+                    <echo message="Building duccbook Installation HTML" />
+                    <mkdir dir="target/site/duccbook-html" />
+                    <exec executable="htlatex" dir="src/site/tex/duccbook" failonerror="true">
+                      <arg value="installation.tex" />
+                    </exec>
+                    <move todir="target/site/duccbook-html" overwrite="true">
+                      <fileset dir="src/site/tex/duccbook">
+                        <include name="installation.html" />
+                        <include name="installation.css" />
+                      </fileset>
+                    </move>
+                    <delete file="src/site/tex/duccbook/installation.4ct" />
+                    <delete file="src/site/tex/duccbook/installation.4tc" />
+                    <delete file="src/site/tex/duccbook/installation.aux" />
+                    <delete file="src/site/tex/duccbook/installation.dvi" />
+                    <delete file="src/site/tex/duccbook/installation.idv" />
+                    <delete file="src/site/tex/duccbook/installation.lg" />
+                    <delete file="src/site/tex/duccbook/installation.log" />
+                    <delete file="src/site/tex/duccbook/installation.tmp" />
+                    <delete file="src/site/tex/duccbook/installation.xref" />
+                    <echo message="Completed installation HTML" />
+
                     <echo message="Building duccbook Installation PDF" />
                     <mkdir dir="target/site/duccbook-pdf" />
                     <exec executable="pdflatex" dir="src/site/tex/duccbook" failonerror="true">
@@ -114,7 +138,31 @@
                       <arg value="-output-directory=../../../../target/site/duccbook-pdf" />
                       <arg value="installation.tex" />
                     </exec>
+
                     <echo message="Completed duccbook Installation PDF" />
+
+                    <exec executable="latex" dir="src/site/tex/duccbook">
+                      <arg value="-output-directory=../../../../target/site/duccbook-install" />
+                      <arg value="installation.tex" />
+                    </exec>
+                    <delete file="target/site/duccbook-pdf/installation.aux" />
+                    <delete file="target/site/duccbook-pdf/installation.log" />
+                    <delete file="target/site/duccbook-pdf/installation.out" />
+                    <echo message="Completed duccbook Installation PDF" />
+
+                    <!-- must be run twice to correctly gen the xrefs, TOC, etc. -->
+                    <!-- htlatex by default runs enough to get xrefs and TOC -->
+                    <exec executable="dvi2tty" dir="target/site/duccbook-install">
+                      <arg value="-oINSTALL" />
+                      <arg value="-w132" />
+                      <arg value="-l" />
+                      <arg value="installation.dvi" />
+                    </exec>
+                    <delete file="target/site/duccbook-install/installation.aux" />
+                    <delete file="target/site/duccbook-install/installation.log" />
+                    <delete file="target/site/duccbook-install/installation.out" />
+                    <delete file="target/site/duccbook-install/installation.dvi" />
+                    <echo message="Completed duccbook Installation Text file as INSTALL" />
 
 
                     <echo message="Building duccbook PDF" />
@@ -136,6 +184,7 @@
                     <delete file="target/site/duccbook-pdf/duccbook.out" />
                     <delete file="target/site/duccbook-pdf/duccbook.toc" />
                     <echo message="Completed duccbook PDF" />
+
 
                   </target>
                 </configuration>
@@ -165,9 +214,12 @@
                 <configuration>
                   <target>
 
+
                     <echo message="Building duccbook HTML" />
                     <mkdir dir="target/site/duccbook-html" />
                     <mkdir dir="target/site/duccbook-html/images" />
+                    <mkdir dir="target/site/duccbook-install" />
+
                     <exec executable="htlatex" dir="src/site/tex/duccbook">
                       <arg value="duccbook.tex" />
                     </exec>
@@ -192,10 +244,33 @@
                     <delete file="src/site/tex/duccbook/duccbook.xref" />
                     <echo message="Completed duccbook HTML" />
 
+                    <echo message="Building duccbook Installation HTML" />
+                    <mkdir dir="target/site/duccbook-html" />
+                    <exec executable="htlatex" dir="src/site/tex/duccbook" failonerror="true">
+                      <arg value="installation.tex" />
+                    </exec>
+                    <move todir="target/site/duccbook-html" overwrite="true">
+                      <fileset dir="src/site/tex/duccbook">
+                        <include name="installation.html" />
+                        <include name="installation.css" />
+                      </fileset>
+                    </move>
+                    <delete file="src/site/tex/duccbook/installation.4ct" />
+                    <delete file="src/site/tex/duccbook/installation.4tc" />
+                    <delete file="src/site/tex/duccbook/installation.aux" />
+                    <delete file="src/site/tex/duccbook/installation.dvi" />
+                    <delete file="src/site/tex/duccbook/installation.idv" />
+                    <delete file="src/site/tex/duccbook/installation.lg" />
+                    <delete file="src/site/tex/duccbook/installation.log" />
+                    <delete file="src/site/tex/duccbook/installation.tmp" />
+                    <delete file="src/site/tex/duccbook/installation.xref" />
+                    <echo message="Completed installation HTML" />
+
                     <echo message="Building duccbook Installation PDF" />
                     <mkdir dir="target/site/duccbook-pdf" />
-                    <exec executable="pdflatex" dir="src/site/tex/duccbook">
+                    <exec executable="pdflatex" dir="src/site/tex/duccbook" failonerror="true">
                       <arg value="-output-directory=../../../../target/site/duccbook-pdf" />
+                      <arg value="-interaction=errorstopmode" />
                       <arg value="installation.tex" />
                     </exec>
 
@@ -205,7 +280,31 @@
                       <arg value="-output-directory=../../../../target/site/duccbook-pdf" />
                       <arg value="installation.tex" />
                     </exec>
+
                     <echo message="Completed duccbook Installation PDF" />
+
+                    <exec executable="latex" dir="src/site/tex/duccbook">
+                      <arg value="-output-directory=../../../../target/site/duccbook-install" />
+                      <arg value="installation.tex" />
+                    </exec>
+                    <delete file="target/site/duccbook-pdf/installation.aux" />
+                    <delete file="target/site/duccbook-pdf/installation.log" />
+                    <delete file="target/site/duccbook-pdf/installation.out" />
+                    <echo message="Completed duccbook Installation PDF" />
+
+                    <!-- must be run twice to correctly gen the xrefs, TOC, etc. -->
+                    <!-- htlatex by default runs enough to get xrefs and TOC -->
+                    <exec executable="dvi2tty" dir="target/site/duccbook-install">
+                      <arg value="-oINSTALL" />
+                      <arg value="-w132" />
+                      <arg value="-l" />
+                      <arg value="installation.dvi" />
+                    </exec>
+                    <delete file="target/site/duccbook-install/installation.aux" />
+                    <delete file="target/site/duccbook-install/installation.log" />
+                    <delete file="target/site/duccbook-install/installation.out" />
+                    <delete file="target/site/duccbook-install/installation.dvi" />
+                    <echo message="Completed duccbook Installation Text file as INSTALL" />
 
 
                     <echo message="Building duccbook PDF" />

@@ -352,7 +352,7 @@ public abstract class CliBase
     void setOptions(UiOption[] uiOpts) throws Exception {
         for (Option opt : commandLine.getOptions()) {
             String val = opt.getValue();
-            if (val == null) {
+            if (val == null) {                    // Should only happen for no-arg options
                 val = opt.hasArg() ? "" : "true"; // Treat no-arg options as booleans ... apache.commons.cli expects this
             } else {
                 if (val.contains("${")) {
@@ -363,8 +363,14 @@ public abstract class CliBase
                     throw new Exception("Duplicate option specified: " + opt.getLongOpt());
                 }
             }
-            cli_props.put(opt.getLongOpt(), val);
-            if (debug) System.out.println("CLI set " + opt.getLongOpt() + " = " + val);
+            val = val.trim();
+            // SM cannot handle an empty list of service dependencies
+            if (val.length() == 0 && opt.getLongOpt().equals(UiOption.ServiceDependency.pname())) {
+                if (debug) System.out.println("CLI dropped empty option " + opt.getLongOpt());
+            } else {
+                cli_props.put(opt.getLongOpt(), val);
+                if (debug) System.out.println("CLI set " + opt.getLongOpt() + " = '" + val + "'");
+            }
         }
     }
     
