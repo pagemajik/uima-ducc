@@ -264,46 +264,59 @@ public abstract class AbstractDuccComponent implements DuccComponent,
   }
 
   public void start(DuccService service, String[] args) throws Exception {
-    String endpoint = null;
-    this.service = service;
-    if (System.getProperty("ducc.deploy.components") != null
-            && !System.getProperty("ducc.deploy.components").equals("uima-as")
-            && (endpoint = System.getProperty("ducc.admin.endpoint")) != null) {
-      if (logger != null) {
-        logger.info("start", null, ".....Starting Admin Channel on endpoint:" + endpoint);
-      }
-      startAdminChannel(endpoint, this);
-      System.out.println(".....Starting Admin Channel on endpoint:" + endpoint);
-    }
-    if (logger != null) {
-      logger.info("start",null, ".....Starting Camel Context");
-    }
-    // Start Camel
-    context.start();
-    if (logger != null) {
-      logger.info("start",null, "..... Camel Initialized and Started");
-    }
-    // Instrument this process with JMX Agent. The Agent will
-    // find an open port and start JMX Connector allowing
-    // jmx clients to connect to this jvm using standard
-    // jmx connect url. This process does not require typical
-    // -D<jmx params> properties. Currently the JMX does not
-    // use security allowing all clients to connect.
-    processJmxUrl = startJmxAgent();
-    System.getProperties().setProperty("ducc.jmx.url", processJmxUrl);
-    if (logger != null) {
-      logger.info("start",null, "Connect jConsole to this process using JMX URL:" + processJmxUrl);
-    }
-    ServiceShutdownHook shutdownHook = new ServiceShutdownHook(this, logger);
-    // serviceDeployer);
-    Runtime.getRuntime().addShutdownHook(shutdownHook);
-    // Register Ducc Component MBean with JMX.
-    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+	    String endpoint = null;
+	    this.service = service;
+	    if (System.getProperty("ducc.deploy.components") != null
+	            && !System.getProperty("ducc.deploy.components").equals("uima-as")
+	            && (endpoint = System.getProperty("ducc.admin.endpoint")) != null) {
+	      if (logger != null) {
+	        logger.info("start", null, ".....Starting Admin Channel on endpoint:" + endpoint);
+	      }
+	      startAdminChannel(endpoint, this);
+	      System.out.println(".....Starting Admin Channel on endpoint:" + endpoint);
+	    }
+	    if (logger != null) {
+	      logger.info("start",null, ".....Starting Camel Context");
+	    }
+	    // Start Camel
+	    context.start();
+	    List<Route> routes  = context.getRoutes();
+	   
+	    for( Route route : routes ) {
+	    	 context.startRoute(route.getId());
+	    	 if (logger != null) {
+	    	      logger.info("start",null, "---OR Route in Camel Context-"+route.getEndpoint().getEndpointUri()+" Route State:"+context.getRouteStatus(route.getId()));
+	    	    }
+	    }
+	    if (logger != null) {
+	      logger.info("start",null, "..... Camel Initialized and Started");
+	    }
+	    // Instrument this process with JMX Agent. The Agent will
+	    // find an open port and start JMX Connector allowing
+	    // jmx clients to connect to this jvm using standard
+	    // jmx connect url. This process does not require typical
+	    // -D<jmx params> properties. Currently the JMX does not
+	    // use security allowing all clients to connect.
+	    if (logger != null) {
+	        logger.info("start",null, "..... Starting JMX Agent");
+	      }
+	    processJmxUrl = startJmxAgent();
+	    if (logger != null && processJmxUrl != null && processJmxUrl.trim().length() > 0 ) {
+	        logger.info("start",null, "..... JMX Agent Ready");
+	        logger.info("start",null, "Connect jConsole to this process using JMX URL:" + processJmxUrl);
+	      }
+	    System.getProperties().setProperty("ducc.jmx.url", processJmxUrl);
 
-    ObjectName name = new ObjectName(
-            "org.apache.uima.ducc.service.admin.jmx:type=DuccComponentMBean,name="
-                    + getClass().getSimpleName());
-    mbs.registerMBean(this, name);
+	    ServiceShutdownHook shutdownHook = new ServiceShutdownHook(this, logger);
+	    // serviceDeployer);
+	    Runtime.getRuntime().addShutdownHook(shutdownHook);
+	    // Register Ducc Component MBean with JMX.
+	    MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+
+	    ObjectName name = new ObjectName(
+	            "org.apache.uima.ducc.service.admin.jmx:type=DuccComponentMBean,name="
+	                    + getClass().getSimpleName());
+	    mbs.registerMBean(this, name);
   }
 
   protected String getProcessJmxUrl() {
@@ -393,9 +406,13 @@ public abstract class AbstractDuccComponent implements DuccComponent,
     e.printStackTrace();
   }
 
+  /** 
+   * Start RMI registry so the JMX clients can connect to the JVM via JMX.
+   * 
+   * @return JMX connect URL
+   * @throws Exception
+   */
   public String startJmxAgent() throws Exception {
-    try {
-
       int rmiRegistryPort = 2099; // start with a default port setting
       if (System.getProperty("ducc.jmx.port") != null) {
         try {
@@ -403,33 +420,46 @@ public abstract class AbstractDuccComponent implements DuccComponent,
           rmiRegistryPort = tmp;
         } catch (NumberFormatException nfe) {
           // default to 2099
+        	nfe.printStackTrace();
         }
       }
       boolean done = false;
       JMXServiceURL url = null;
+      
       // retry until a valid rmi port is found
       while (!done) {
-        try {
-          LocateRegistry.createRegistry(rmiRegistryPort);
-          MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        	try {
+             	//	 set up RMI registry on a given port
+        		LocateRegistry.createRegistry(rmiRegistryPort);
+                done = true;
+                // Got a valid port
+        	} catch( Exception exx) {
+                // Try again with a different port
+                rmiRegistryPort++;
+        	}
+      } // while
 
-          final String hostname = InetAddress.getLocalHost().getHostName();
-          String s = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname,
-                  rmiRegistryPort);
-          url = new JMXServiceURL(s);
-          jmxConnector = JMXConnectorServerFactory.newJMXConnectorServer(url, null, mbs);
-          jmxConnector.start();
-          done = true;
-          // Got a valid port
+      try {
+        	MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+            DuccProperties dp = new DuccProperties();
+         
+            final String hostname = InetAddress.getLocalHost().getHostName();
+            String s = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname,
+                    rmiRegistryPort);
+            url = new JMXServiceURL(s);
+            jmxConnector = JMXConnectorServerFactory.newJMXConnectorServer(url, null, mbs);
+            jmxConnector.start();
         } catch (Exception e) {
-          // Try again with a different port
-          rmiRegistryPort++;
+        	url = null;
+        	if ( logger != null ) {
+        		logger.error("startJmxAgent", null, "Unable to Start JMX Connector. Running with *No* JMX Connectivity");
+        	}
         }
+      if ( url == null ) {
+    	  return "";    // empty string
+      } else {
+          return url.toString();
       }
-      return url.toString();
-    } catch (Exception e) {
-      throw e;
-    }
   }
 
   public void cleanup(Throwable e) {
