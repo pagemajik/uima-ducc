@@ -121,11 +121,6 @@
 		</dependency>
 		<dependency>
 			<groupId>org.apache.uima</groupId>
-			<artifactId>uima-ducc-db</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.uima</groupId>
 			<artifactId>uima-ducc-user</artifactId>
 			<version>${project.version}</version>
 		</dependency>
@@ -180,10 +175,6 @@
 		</dependency>
 		<dependency>
 			<groupId>org.apache.uima</groupId>
-			<artifactId>uima-ducc-db</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.uima</groupId>
 			<artifactId>uima-ducc-user</artifactId>
 		</dependency>
 		<dependency>
@@ -191,12 +182,27 @@
 			<artifactId>uima-ducc-container</artifactId>
 		</dependency>
 	</dependencies>
-	<build>
-		<resources />
+	
+        <build>
+
+
+         <!--resources>
+            <resource>
+               <directory>${baseidr}/src/main/resources</directory>
+               <includes>
+                  <include>README</include>
+                  <include>RELEASE_NOTES.html</include>
+               </includes>
+               <filtering>true</filtering>
+               <targetPath>${basedir}/target</targetPath>
+            </resource>
+	 </resources-->
+
 
 
 
 		<plugins>
+
 
 			<!-- This java doc config is for building the ones distributed with the 
 				bin packaging, and also posted on our website. -->
@@ -362,7 +368,7 @@
 				</executions>
 			</plugin>
 
-			<!-- plugin>
+			<!--plugin>
 				<artifactId>maven-resources-plugin</artifactId>
 				<version>2.5</version>
 				<executions>
@@ -438,7 +444,7 @@
 				</execution>
 			    </executions>
 			</plugin>
-<plugin>
+<!--plugin>
     <artifactId>maven-antrun-plugin</artifactId>
     <executions>
       <execution>
@@ -457,9 +463,12 @@
         </goals>
       </execution>
     </executions>
-  </plugin>
+  </plugin -->
 		</plugins>
 		<!-- /pluginManagement -->
+
+
+
 	</build>
 
 	<!-- Include all ducc modules -->
@@ -476,7 +485,6 @@
 		<module>uima-ducc-duccdocs</module>
 		<module>uima-ducc-web</module>
 		<module>uima-ducc-examples</module>
-		<module>uima-ducc-db</module>
 		<module>uima-ducc-spawn</module>
 		<module>uima-ducc-user</module>
 		<!-- Note: uima-ducc-container has a test dependency on uima-ducc-user so must be built after it -->
