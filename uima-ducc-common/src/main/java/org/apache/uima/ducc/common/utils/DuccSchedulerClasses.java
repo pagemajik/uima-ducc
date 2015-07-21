@@ -47,21 +47,12 @@ public class DuccSchedulerClasses {
 		return instance;
 	}
 	
-	public DuccSchedulerClasses() {
+	private DuccSchedulerClasses() {
 	    String dir_home = Utils.findDuccHome();  // Ensure DUCC_HOME is in the System properties
 		String key = DuccPropertiesResolver.ducc_rm_class_definitions;
 		String file_classes = DuccPropertiesResolver.getInstance().getFileProperty(key);
 		String dir_resources = "resources";
 		fileName = dir_home+File.separator+dir_resources+File.separator+file_classes;
-	}
-	
-    /**
-     * Pass in a logger, usefull in the daemons.  If no logger the NodeConfiguration will
-     * write to stdout/stderr.
-     */
-	public DuccSchedulerClasses(DuccLogger logger) {
-        super();
-        this.logger = logger;
 	}
 	
 	public String getProperty(Properties properties, String name) {
@@ -82,10 +73,11 @@ public class DuccSchedulerClasses {
 
         File file = new File(fileName);
         if ( lastModified != file.lastModified() ) {         // reread if it looks like it changed
-            lastModified = file.lastModified();
-            nodeConfiguration = new NodeConfiguration(fileName, null, null, logger); // UIMA-4275 use single common constructor
-            lastModified = file.lastModified();
-            nodeConfiguration.readConfiguration();
+            synchronized(this) {    // Ensure parallel threads see a valid nodeConfiguration 
+                nodeConfiguration = new NodeConfiguration(fileName, null, null, logger); // UIMA-4275 use single common constructor
+                nodeConfiguration.readConfiguration();
+                lastModified = file.lastModified();   // Update this AFTER the nodeConfiguration is valid
+            }
         }
 
 		return nodeConfiguration;
