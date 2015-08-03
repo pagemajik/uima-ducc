@@ -38,6 +38,7 @@ import org.apache.uima.ducc.transport.agent.UimaPipelineAEComponent;
 
 
 public class JmxAEProcessInitMonitor implements Runnable {
+	volatile boolean running = false;
 	MBeanServer server = null;
 	AgentSession agent;
 	static int howManySeenSoFar = 1;
@@ -58,8 +59,20 @@ public class JmxAEProcessInitMonitor implements Runnable {
 		
 		return null;
 	}
-
+    public void updateAgentWhenRunning() {
+    	running = true;
+		try {
+			//aeStateList.clear();
+			//agent.notify(true, aeStateList);
+		    run();
+		} catch (Exception ex) {
+			agent.logger.error("UimaAEJmxMonitor.updateAgentWhenRunning", null, ex);
+		}
+    }
 	public void run() {
+		if ( running ) {
+			return; // the process is in Running state
+		}
 		try {
 			// create an ObjectName with UIMA As JMS naming convention to
 			// enable
@@ -182,14 +195,14 @@ public class JmxAEProcessInitMonitor implements Runnable {
 				}
 			}
 			howManySeenSoFar = 1; // reset error counter
-			if (updateAgent) {
+			if (updateAgent && !running ) {
 				if ( agent != null && agent.logger != null ) {
 					agent.logger.debug("UimaAEJmxMonitor.run()", null,
 							"---- Publishing UimaPipelineAEComponent List - size="
 									+ aeStateList.size());
 				}
 				try {
-					agent.notify(aeStateList);
+					agent.notify(false, aeStateList);
 				} catch (Exception ex) {
 					throw ex;
 				} finally {

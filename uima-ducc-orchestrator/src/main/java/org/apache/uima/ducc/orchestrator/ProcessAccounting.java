@@ -507,9 +507,11 @@ public class ProcessAccounting {
 		logger.trace(methodName, job.getDuccId(), messages.fetch("enter"));
 		List<IUimaPipelineAEComponent> list = inventoryProcess.getUimaPipelineComponents();
 		if(list != null) {
-			if(!list.isEmpty()) {
-				process.setUimaPipelineComponents(list);
-			}
+			logger.trace(methodName, job.getDuccId(), "size: "+list.size());
+			process.setUimaPipelineComponents(list);
+		}
+		else {
+			logger.trace(methodName, job.getDuccId(), "size: null");
 		}
 		logger.trace(methodName, job.getDuccId(), messages.fetch("exit"));
 	}
