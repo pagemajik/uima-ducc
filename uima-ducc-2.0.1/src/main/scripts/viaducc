@@ -1,0 +1,236 @@
+#!/usr/bin/env python
+
+#   Licensed to the Apache Software Foundation (ASF) under one
+#   or more contributor license agreements.  See the NOTICE file
+#   distributed with this work for additional information
+#   regarding copyright ownership.  The ASF licenses this file
+#   to you under the Apache License, Version 2.0 (the
+#   "License"); you may not use this file except in compliance
+#   with the License.  You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing,
+#   software distributed under the License is distributed on an
+#   #  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+#   KIND, either express or implied.  See the License for the
+#   specific language governing permissions and limitations
+#   under the License.
+
+#
+# To use this to execute your Eclipse workspace, install as a symbolic
+# link in your JRE/bin directory, with any name other than 'viaducc',
+# for instance, java-viaducc,, linking back to the base version of
+# viaducc in your ducc_runtime.
+#
+# Then configre your Eclipse's launch JRE to use java_viaducc in place
+# of 'java'
+
+import sys
+import os
+import re
+
+global ducc_mem_size
+global default_jvm
+global ducc_home
+
+ducc_class = 'fixed'
+java_cmd   = None
+ducc_home  = None       # tbd in a minute
+ducc_mem_size = None
+default_jvm = None
+
+# get the default DUCC_HOME right away for message
+realpath = os.path.realpath(sys.argv[0])
+ndx = realpath.rindex('/')
+ndx = realpath.rindex('/', 0, ndx)
+ducc_home = realpath[:ndx]
+       
+def usage():
+
+    print "Usage: viaducc [defines] [command and parameters]"
+    print "  -or-"
+    print "       java_viaducc [defines] [java-class and parameters]"
+    print ""
+    print "Where defines include:"
+    print "   -DDUCC_MEMORY_SIZE=size-in-gb"
+    print "       The default is -DDUCC_MEMORY_SIZE="+str(ducc_mem_size)
+    print""
+    print "   -DDUCC_HOME=alternative-DUCC-runtime"
+    print "       The default is -DDUCC_HOME=" + ducc_home
+    print ""
+    print "   -DDUCC_CLASS=ducc-scheduling-class"
+    print "       The default is -DDUCC_CLASS=" + ducc_class
+    print ""
+    print "   -DDUCC_ENVIRONMENT=environment-settings"
+    print "       The default is no additional environment.  The environment string should be"
+    print '       blank-delimeted and quoted, for example: -DDUCC_ENVIRONMENT="A=B C=D"'
+    if (default_jvm != None ):
+        print ""
+        print "   -DJAVA_BIN=specific-java-bin-directory"
+        print "       For use with java_viaducc.  Details follow."
+        print "       The default is -DJAVA_BIN=" + default_jvm
+    print ""
+    print "   -DDUCC_NO_CANCEL_ON_INTERRUPT"
+    print "       To disable process cancellation when the submitting process terminates."
+    print ""
+    print "   When invoked as 'viaducc' the command is executed in a DUCC-managed resource"
+    print "with the console (bi-directionally) redirected to the submitter's console."
+    print ""
+    print "   When invokded as 'java_viaducc' an appropriate JRE is found and the class"
+    print "is executed as a java class in a DUCC-managed resource, with the console"
+    print "bi-directionally redirected to the submitter's console."
+    print ""
+    print "Notes for java_viaducc:"
+    print ""
+    print "   If java_viaducc is installed in a JRE/bin directory, it may be invoked as an"
+    print "alternative to java from Eclipse, allowing Eclipse users to execute their workspaces"
+    print "in a DUCC-managed resource.  JAVA_BIN should NOT be used in this case.  java_viaducc"
+    print "will use the JRE it is installed in."
+    print ""
+    print "   If java_viaducc is used as a 'normal' command, the JRE is searched for in this order:"
+    print "      1. Use the java specified by -DJAVA_BIN="
+    print "      2. Use the java configured for DUCC"
+    
+    print
+    sys.exit(0)
+
+# where should I get java from?
+def read_properties():
+    ducc_properties = ducc_home + '/resources/ducc.properties'
+    if ( not os.path.exists(ducc_properties) ):
+        print "Cannot access DUCC_HOME at " + ducc_home
+        sys.exit(1)
+
+    ducc_jvm = None
+    # first see if i'm executed out of some JAVA_HOME somewhere
+    jpath = os.path.abspath(sys.argv[0])    
+    ndx = jpath.rindex('/')
+    jdir = jpath[:ndx]
+    java = jdir + '/java'
+    if ( os.path.exists(java)):
+        ducc_jvm = java
+
+    # nope, we'll use the default ducc java
+    props = open(ducc_properties)
+    try:
+        for line in props:
+            line = line.strip()
+            mobj = re.search('[ =:]+', line)    # java props allows apace, =, or : as delimeters
+            if ( mobj ):
+                key = line[:mobj.start()].strip()
+                val = line[mobj.end():].strip()
+                if ( (ducc_jvm == None) and (key == 'ducc.jvm') ):       # yes!
+                    ducc_jvm = val
+                    continue
+                if ( key == 'ducc.rm.share.quantum' ):       # yes!
+                    ducc_mem = val
+                    continue
+    finally:
+        props.close();
+
+    return (ducc_jvm, ducc_mem)
+
+def main():
+
+    global ducc_mem_size
+    global default_jvm
+    global ducc_home
+
+    if ( len(sys.argv) == 1 ):
+        usage()
+
+    ducc_class = 'fixed'
+    java_cmd   = None
+    ducc_env   = ''
+    enable_cancel = True
+
+    # remember to add the '=' at the end if following value
+    p_mem_size  = '-DDUCC_MEMORY_SIZE='
+    p_class     = '-DDUCC_CLASS='
+    p_jvm_dir   = '-DJAVA_BIN='
+    p_ducc_home = '-DDUCC_HOME='
+    p_env       = '-DDUCC_ENVIRONMENT='
+    p_no_int    = '-DDUCC_NO_CANCEL_ON_INTERRUPT'
+
+    need_java = False
+    if ( os.path.basename(sys.argv[0]) != 'viaducc' ):
+        # if invokded as 'java_viaducc we must inject some kind of jvm as the executable
+        # this is more liberal: any link other than 'viaducc' caused injection of the
+        # jvm, to allow multiple, different symlinks (in case there are multiple,
+        # different versions of ducc, not really reccomended, but supported)
+        need_java = True
+
+    ducc_args = []
+    for arg in sys.argv[1:]:
+ 
+        if (arg in ('-h', '-?', '-help', '--help') ):
+            # have to wait for parsing the args to look up DUCC_HOME so we defer emitting the message
+            usage()
+       
+        elif (arg.startswith(p_mem_size) ):
+            ducc_mem_size = arg[len(p_mem_size):]
+
+        elif (arg.startswith(p_class) ):
+            ducc_class = arg[len(p_class):]
+
+        elif (arg.startswith(p_jvm_dir) ):
+            java_cmd = arg[len(p_jvm_dir):] + '/java'
+
+        elif (arg.startswith(p_ducc_home) ):
+            ducc_home = arg[len(p_ducc_home):]
+
+        elif (arg.startswith(p_env) ):
+            ducc_env = ' --environment "' + arg[len(p_env):] + '"'
+
+        elif (arg.startswith(p_no_int) ):
+            enable_cancel = False
+
+        else:
+            ducc_args.append("'" + arg + "'")
+
+    p = read_properties()
+    default_jvm = p[0]
+    if (ducc_mem_size == None ):
+        ducc_mem_size = p[1]
+
+    if ( need_java and (java_cmd == None) ):
+        java_cmd = default_jvm
+        if ( (java_cmd == None) or (java_cmd == '') ):
+            print "Cannot figure out where java is"
+            sys.exit(1);
+
+    # DUCC_HOME isn't ususally needed but viaducc is slithery and may end up tryng to
+    # execute from somebody else's ducc so let's be sure we point at the right one
+    os.environ['DUCC_HOME'] = ducc_home
+    CMD = ducc_home + '/bin/ducc_process_submit'
+    CMD = CMD +       ' --attach_console'
+    CMD = CMD +       ' --process_memory_size ' + str(ducc_mem_size)
+    CMD = CMD +       ' --scheduling_class ' + ducc_class
+    CMD = CMD +       ' --description ' + os.path.basename(sys.argv[0])
+    CMD = CMD +       ' --wait_for_completion'
+    if (enable_cancel):
+        CMD = CMD +       ' --cancel_on_interrupt'
+    CMD = CMD +       ' --working_directory ' + os.getcwd()
+    CMD = CMD +       ducc_env
+ 
+    if ( need_java ):
+        CMD = CMD +   ' --process_executable ' + java_cmd 
+        if ( len(ducc_args) > 0):
+            CMD = CMD +   ' --process_executable_args "' + ' '.join(ducc_args) + '"'
+    else:
+        if ( len(ducc_args) == 0 ):
+            print "No command specified."
+            sys.exit(1);
+
+        CMD = CMD +   ' --process_executable ' + ducc_args[0]
+        if ( len(ducc_args[1:]) > 0):
+            CMD = CMD +   ' --process_executable_args "' + ' '.join(ducc_args[1:]) + '"'
+
+    print CMD
+    sys.stdout.flush()         # UIMA-4168
+
+    rc = os.system(CMD)
+    sys.exit(rc);
+
+main()
